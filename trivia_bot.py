@@ -185,7 +185,7 @@ class TriviaBot(disc.Client):
             "messages": [{"role": "system", "content": self.__initial_prompt}]}
         
 
-    @tasks.loop(seconds=24)
+    @tasks.loop(hours=24)
     async def __clear_conversation__(self):
         now = dt.datetime.now()
         for key, value in self.__conversations.items():
