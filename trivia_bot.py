@@ -10,6 +10,10 @@ import json
 
 
 class TriviaBot(disc.Client):
+    """
+    TriviaBot class is responsible for running the Trivia Bot Discord application. 
+    Use TriviaBot.run('token key') to run the bot.
+    """
     def __init__(self, intents: disc.Intents, openai_key: str) -> None:
         super().__init__(intents=intents)
         self.__initialize_logging__()
@@ -46,6 +50,9 @@ class TriviaBot(disc.Client):
 
 
     def __initialize_logging__(self):
+        """
+        Starts console and file logger. Use self.__logger to create logs.
+        """
         self.__logger = log.Logger('Trivia Bot')
         self.__logger.handler = log.StreamHandler(sys.stdout)
         self.__logger.handler.setLevel(log.DEBUG)
@@ -67,12 +74,18 @@ class TriviaBot(disc.Client):
 
 
     async def send_msg(self, channel: disc.TextChannel, message: str):
+        """
+        Sends a message to the specified text channel.
+        """
         self.__logger.debug(f'Sending message "{message}" to {channel.name} of #{channel.guild.id}')
         self.__initialize_logging__()
         await channel.send(message)
 
 
     async def on_guild_join(self, guild: disc.Guild):
+        """
+        Sends a 'welcome message' upon being added to a Discord server.
+        """
         self.__logger.info(f'Added to #{guild.id}')
 
         old_channel = self.__get_oldest_channel__(guild)
@@ -82,16 +95,28 @@ class TriviaBot(disc.Client):
 
 
     async def on_guild_remove(self, guild: disc.Guild):
+        """
+        Logs when the bot is removed from a Discord server.
+        """
         self.__logger.info(f'Removed from #{guild.id}')
 
 
     async def on_ready(self):
+        """
+        Executes when the Discord bot is enabled. Will begin the 24-hour cycle of clearing old conversations.
+        """
         self.__logger.info(f'Logged in as {self.user}')
 
         await self.__clear_conversation__.start()    
 
 
     async def on_message(self, message: str):
+        """
+        Executes when a text channel the Discord bot can view receives a new message. 
+        It's responsible for responding to !trivia messages.
+        e.g., !trivia c, !trivia nq, !trivia help
+        """
+
         if message.author == self.user:
             return
         
@@ -157,6 +182,8 @@ class TriviaBot(disc.Client):
 
                 if len(category) == 0:
                     self.__logger.debug(f'Message#{message.id} is for changing category but the category is empty.')
+
+                    await self.send_msg(message.channel, 'You entered no category. The correct format is **!trivia c *category_name***.')
                     return
 
                 self.__logger.debug(f'Message#{message.id} is for changing category to {msg}.')
@@ -170,6 +197,9 @@ class TriviaBot(disc.Client):
 
 
     def __get_oldest_channel__(self, guild: disc.Guild) -> disc.TextChannel:
+        """
+        Returns the oldest text channel the Discord bot can view from a specified Discord server.
+        """
         old_cha = None
         for channel in guild.text_channels:
             if old_cha is None or channel.created_at < old_cha.created_at:
@@ -178,6 +208,10 @@ class TriviaBot(disc.Client):
 
 
     def __add_conversation__(self, guild_id: int):
+        """
+        Adds a new item to self.__conversations. 
+        self.__conversations is used to distinguish between ChatGPT correspondance between different servers.
+        """
         self.__logger.debug(f'Added #{guild_id} to active conversations.')
 
         self.__conversations[guild_id] = {
@@ -187,6 +221,10 @@ class TriviaBot(disc.Client):
 
     @tasks.loop(hours=24)
     async def __clear_conversation__(self):
+        """
+        Every 24 hours, a conversation that has not been updated in 86340 seconds (~24 hours) will be removed. 
+        It is used to free up memory.
+        """
         now = dt.datetime.now()
         for key, value in self.__conversations.items():
             dif: dt.timedelta = now - value['last_updated']
@@ -195,6 +233,10 @@ class TriviaBot(disc.Client):
 
 
     def __remove_conversation__(self, guild_id: int):
+        """
+        Deletes records from a specified server. The records specifically are the message history, 
+        last question and answer, and the last category.
+        """
         self.__logger.debug(f'Removed #{guild_id} from active conversations.')
 
         del self.__conversations[guild_id]
@@ -203,6 +245,10 @@ class TriviaBot(disc.Client):
     
 
     def __filter_category_reponse__(self, category: str, response: str, guild_id: int) -> str:
+        """
+        Processes the ChatGPT response for changing trivia categories. 
+        It returns different responses according to whether ChatGPT accepted the category.
+        """
         response = response.strip()
         
         self.__logger.debug("ChatGPT Category Response: " + response)
@@ -213,8 +259,11 @@ class TriviaBot(disc.Client):
         self.__categories[guild_id] = category
         return response
     
-    
     def __filter_qa_response__(self, response: str, guild_id: int) -> bool:
+        """
+        Processes the ChatGPT response for a new question and answer. 
+        It returns True if the response is valid (must be JSON string with keys 'question' and 'answer'). 
+        """
         self.__logger.debug("ChatGPT QA Response: " + response)
 
         try:
@@ -230,12 +279,19 @@ class TriviaBot(disc.Client):
 
 
     def __update_conversation_time__(self, guild_id: int):
+        """
+        Processes the ChatGPT response for a new question and answer. It returns True if the response is valid. 
+        """
         if self.__conversations.get(guild_id) is None:
             return
         self.__conversations[guild_id]['last_updated'] = dt.datetime.now()
 
 
     def __get_chatgpt_response__(self, msg: str, guild_id: int) -> str:
+        """
+        Sends prompt to ChatGPT and receives response. 
+        Appends messages to message history in self.__conversations.
+        """
         if self.__conversations.get(guild_id) is None: 
             self.__add_conversation__(guild_id)
         self.__conversations[guild_id]['messages'].append({"role": "user", "content": msg})
@@ -252,9 +308,9 @@ class TriviaBot(disc.Client):
         return refined
 
 
-
+# Code to run TriviaBot
 if __name__ == '__main__':
-    openai_key = "PUT OPENAI KEY HERE"
+    openai_key = 'PUT OPENAI KEY HERE'
     discord_token = 'PUT DISCORD APPLICATION TOKEN HERE'
 
     intents = disc.Intents.default()
