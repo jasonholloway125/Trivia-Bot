@@ -78,7 +78,7 @@ class TriviaBot(disc.Client):
         Sends a message to the specified text channel.
         """
         self.__logger.debug(f'Sending message "{message}" to {channel.name} of #{channel.guild.id}')
-        self.__initialize_logging__()
+        
         await channel.send(message)
 
 
