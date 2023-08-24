@@ -280,7 +280,7 @@ class TriviaBot(disc.Client):
 
     def __update_conversation_time__(self, guild_id: int):
         """
-        Processes the ChatGPT response for a new question and answer. It returns True if the response is valid. 
+        Updates the time for when the conversation was last changed. 
         """
         if self.__conversations.get(guild_id) is None:
             return
